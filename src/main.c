@@ -28,7 +28,7 @@ uint8_t read_rfid(uint8_t reg){
 
     tx[1]=0x00;
     tx[0] = (reg << 1) & 0x7E;
-    tx[0] |= 0x80;  
+    tx[0] |= 0x80;
 
     gpio_put(PIN_CS, 0);
     
