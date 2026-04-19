@@ -37,12 +37,50 @@ uint8_t read_rfid(uint8_t reg){
     return 0;
 }
 
+//replace this with actual RFID READING FUCNTION OKAY? 
+bool rfid_get_uid(uint8_t uid[4])
+{
+    return false;
+}
+
+
+void setup_leds(){
+    gpio_init(PIN_LED_GREEN);
+    gpio_init(PIN_LED_RED);
+    gpio_set_dir(PIN_LED_GREEN, GPIO_OUT);
+    gpio_set_dir(PIN_LED_RED, GPIO_OUT);
+    gpio_put(PIN_LED_GREEN, 0);
+    gpio_put(PIN_LED_RED, 0);
+}
+
+
 int main() {
     stdio_init_all();
     setup_spi();
+    setup_leds();
+    auth_store_init();
+    display_init();
+    display_idle();
+    uint8_t uid[4];
+
     //uint8_t x = read_rfid(0x0);
     for (;;) {
-        printf("Hello world!\n");
-        sleep_ms(1000);
+        if(rfid_get_uid(uid))
+        {
+            if(auth_store_check_uid(uid))
+            {
+                display_granted();
+                gpio_put(PIN_LED_GREEN,1);
+                sleep_ms(3000);
+                gpio_put(PIN_LED_GREEN,0);
+            }
+            else{
+                display_denied();
+                gpio_put(PIN_LED_RED,1);
+                sleep_ms(3000);
+                gpio_put(PIN_LED_RED,0);
+            }
+            display_idle();
+        }
     }
 }
