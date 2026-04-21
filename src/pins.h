@@ -10,8 +10,9 @@
 #define PIN_RST     9
 
 
-#define PIN_LED_GREEN   19
-#define PIN_LED_RED     22
+#define PIN_LED_GREEN 19
+#define PIN_LED_RED 22
+#define PIN_BUZZER 23
 
 
 #define PIN_SWITCH      23

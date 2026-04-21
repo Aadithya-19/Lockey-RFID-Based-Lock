@@ -23,37 +23,36 @@ void setup_spi(){
 void setup_pwm() {
     gpio_set_function(PIN_LED_GREEN, GPIO_FUNC_PWM);
     gpio_set_function(PIN_LED_RED, GPIO_FUNC_PWM);
-    //gpio_set_function(PIN_BUZZER, GPIO_FUNC_PWM);
+    gpio_set_function(PIN_BUZZER, GPIO_FUNC_PWM);
 
     uint green = pwm_gpio_to_slice_num(PIN_LED_GREEN);
     uint red = pwm_gpio_to_slice_num(PIN_LED_RED);
-    //uint buzzer = pwm_gpio_to_slice_num(PIN_BUZZER);
+    uint buzzer = pwm_gpio_to_slice_num(PIN_BUZZER);
 
     pwm_set_wrap(green, 255);
     pwm_set_wrap(red, 255);
-    //pwm_set_wrap(buzzer, 255);
+    pwm_set_wrap(buzzer, 255);
 
     pwm_set_enabled(green, true);
     pwm_set_enabled(red, true);
-    //pwm_set_enabled(buzzer, true);
+    pwm_set_enabled(buzzer, true);
 }
 
 void pwm_fail(){
     pwm_set_gpio_level(PIN_LED_GREEN, 0);
     pwm_set_gpio_level(PIN_LED_RED, 255);
-
+    pwm_set_gpio_level(PIN_BUZZER, 255);
 }
 void pwm_success(){
-    pwm_set_gpio_level(PIN_LED_RED, 0); 
+    pwm_set_gpio_level(PIN_LED_RED, 0);
+    pwm_set_gpio_level(PIN_BUZZER, 0); 
     pwm_set_gpio_level(PIN_LED_GREEN, 255); 
 }
 void pwm_reset(){
     pwm_set_gpio_level(PIN_LED_RED, 0); 
-    pwm_set_gpio_level(PIN_LED_GREEN, 0); 
+    pwm_set_gpio_level(PIN_LED_GREEN, 0);
+    pwm_set_gpio_level(PIN_BUZZER, 0); 
 }
-
-//0x0 = fail
-//0x1 = success
 
 uint8_t read_rfid(uint8_t reg){
     uint8_t tx[2];
@@ -95,24 +94,22 @@ void init_rfid(){
     rfid_write(0x14, temp | 0x03);
 }
 
-
-//replace this with actual RFID READING FUCNTION OKAY? 
 bool rfid_get_uid(uint8_t uid[4]) {
 
     uint8_t irq;
     int timeout;
 
-    rfid_write(0x04, 0x7F);
-    rfid_write(0x01, 0x00);
-    rfid_write(0x0A, 0x80);
+    rfid_write(0x04, 0x7F); //IRQ register
+    rfid_write(0x01, 0x00); //Command Register
+    rfid_write(0x0A, 0x80); //FIFO Level Register
     
     
-    rfid_write(0x0D, 0x07);
-    rfid_write(0x09, 0x26);
-    rfid_write(0x01, 0x0C);
-    
-    
+    rfid_write(0x0D, 0x07); //Bit Framing Register, awaiting a 7bit message
+    rfid_write(0x09, 0x26); //FIFO Data Register, REQA queued
+    rfid_write(0x01, 0x0C); //Command Register,  communicate
 
+    
+    //first one waits for REQA (0x26) to respond
     timeout = 1000;
     do {
         irq = read_rfid(0x04);
@@ -120,23 +117,25 @@ bool rfid_get_uid(uint8_t uid[4]) {
     } while (!(irq & 0x30) && timeout);
     rfid_write(0x0D, 0x00);
     if (timeout == 0) return false;
-    if (read_rfid(0x06) & 0x1B) return false;
+    if (read_rfid(0x06) & 0x1B) return false; //Error register check
 
-    rfid_write(0x01, 0x00);
-    rfid_write(0x0A, 0x80);
+    //communication, anticollision
+    rfid_write(0x01, 0x00); //Command Register, to stop whatever it is doing
 
-    rfid_write(0x09, 0x93);
-    rfid_write(0x09, 0x20);
-    rfid_write(0x01, 0x0C);
+    //PICC_CMD_SEL_CL1 = 0x93,
+    //Anti collision/Select, Cascade Level 1
+    rfid_write(0x09, 0x93); //FIFO Data Register
+    rfid_write(0x09, 0x20); //FIFO Data Register
+    rfid_write(0x01, 0x0C); //Command Register, to communcate the data
 
-    timeout = 1000;
+    //second one waits for UID
     do {
         irq = read_rfid(0x04);
         timeout--;
     } while (!(irq & 0x30) && timeout);
 
     if (timeout == 0) return false;
-    if (read_rfid(0x06) & 0x1B) return false;
+    if (read_rfid(0x06) & 0x1B) return false; //Error register check
 
     uint8_t len = read_rfid(0x0A);
     if (len < 5) return false;
