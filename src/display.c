@@ -10,14 +10,14 @@
 static void send_command(uint8_t cmd) {
     gpio_put(PIN_LCD_DC, 0);
     gpio_put(PIN_LCD_CSn, 0);
-    spi_write_blocking(SPI_PORT, &cmd, 1);
+    spi_write_blocking(LCD_SPI_PORT, &cmd, 1);
     gpio_put(PIN_LCD_CSn, 1);
 }
 
 static void send_data(uint8_t data) {
     gpio_put(PIN_LCD_DC, 1);
     gpio_put(PIN_LCD_CSn, 0);
-    spi_write_blocking(SPI_PORT, &data, 1);
+    spi_write_blocking(LCD_SPI_PORT, &data, 1);
     gpio_put(PIN_LCD_CSn, 1);
 }
 
@@ -34,7 +34,7 @@ static void set_window(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
     send_command(0x2C);
 }
 void display_init(void) {
-    spi_init(SPI_PORT, 10 * 1000 * 1000);
+    spi_init(LCD_SPI_PORT, 10 * 1000 * 1000);
     gpio_set_function(PIN_LCD_SCK, GPIO_FUNC_SPI);
     gpio_set_function(PIN_LCD_TX, GPIO_FUNC_SPI);
 
@@ -65,8 +65,8 @@ void display_fill(uint16_t color) {
     gpio_put(PIN_LCD_DC, 1);
     gpio_put(PIN_LCD_CSn, 0);
     for (int i = 0; i < 240 * 320; i++) {
-        spi_write_blocking(SPI_PORT, &hi, 1);
-        spi_write_blocking(SPI_PORT, &lo, 1);
+        spi_write_blocking(LCD_SPI_PORT, &hi, 1);
+        spi_write_blocking(LCD_SPI_PORT, &lo, 1);
     }
     gpio_put(PIN_LCD_CSn, 1);
 }
@@ -86,8 +86,8 @@ static void draw_char(uint16_t x, uint16_t y, char c, uint16_t color, uint16_t b
             uint16_t pixel = (font[idx].code[row][col] == '#') ? color : bg;
             uint8_t hi = pixel >> 8;
             uint8_t lo = pixel & 0xFF;
-            spi_write_blocking(SPI_PORT, &hi, 1);
-            spi_write_blocking(SPI_PORT, &lo, 1);
+            spi_write_blocking(LCD_SPI_PORT, &hi, 1);
+            spi_write_blocking(LCD_SPI_PORT, &lo, 1);
         }
     }
     gpio_put(PIN_LCD_CSn, 1);
