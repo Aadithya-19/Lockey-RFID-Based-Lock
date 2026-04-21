@@ -1,12 +1,13 @@
 #ifndef PINS_H
 #define PINS_H
 
-#define SPI_PORT        spi1
-#define PIN_MISO        12
-#define PIN_MOSI        11
-#define PIN_SCK         10
-#define PIN_CS          13
-#define PIN_RST         9
+
+#define SPI_PORT    spi1
+#define PIN_MISO    12
+#define PIN_MOSI    11
+#define PIN_SCK     10
+#define PIN_CS      13
+#define PIN_RST     9
 
 
 #define PIN_LED_GREEN   19
