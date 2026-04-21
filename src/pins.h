@@ -12,6 +12,7 @@
 
 #define PIN_LED_GREEN   19
 #define PIN_LED_RED     22
+#define PIN_BUZZER 26
 
 
 #define PIN_SWITCH      23
@@ -21,8 +22,8 @@
 #define PIN_LCD_SCK     34
 #define PIN_LCD_TX      35
 #define PIN_LCD_CSn     33
-#define PIN_LCD_DC      6
-#define PIN_LCD_RESET   7
+#define PIN_LCD_DC      25
+#define PIN_LCD_RESET   27
 
 #define STORE_SDA       4
 #define STORE_SCL       5
