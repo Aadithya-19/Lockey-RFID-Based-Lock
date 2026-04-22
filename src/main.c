@@ -8,7 +8,10 @@
 #include "pico/stdlib.h"
 #include "mfrc522.h"
 #include "display.h"
+#include "hardware/i2c.h"
 
+#define I2C_PORT i2c0
+#define EEPROM_ADDR 0x50
 #define MAX_CARDS 10
 #define MAX_ATTEMPTS 3
 
@@ -60,13 +63,36 @@ void pwm_reset(){
     pwm_set_gpio_level(PIN_BUZZER, 0); 
 }
 
+void load_uids() 
+{
+    for(int i = 0; i < num_cards; i++) {
+        uint8_t mem_addr_buf[2];
+        uint16_t mem_addr = i * 4; 
+
+        mem_addr_buf[0] = (mem_addr >> 8) & 0xFF; 
+        mem_addr_buf[1] = mem_addr & 0xFF;        
+
+        // Send address to read from, keep bus active
+        i2c_write_blocking(I2C_PORT, EEPROM_ADDR, mem_addr_buf, 2, true); 
+        // Read 4 bytes into our array
+        i2c_read_blocking(I2C_PORT, EEPROM_ADDR, authorized_uids[i], 4, false);
+    }
+}
+
 
 int main() {
     stdio_init_all();
     setup_pwm();
     pwm_reset();
-
-    // Initialize the display and show the idle screen
+    i2c_init(I2C_PORT, 100000); 
+    gpio_set_function(STORE_SDA, GPIO_FUNC_I2C); 
+    gpio_set_function(STORE_SCL, GPIO_FUNC_I2C); 
+    gpio_pull_up(STORE_SDA); 
+    gpio_pull_up(STORE_SCL);
+    gpio_init(PIN_SWITCH);
+    gpio_set_dir(PIN_SWITCH, GPIO_IN);
+    gpio_pull_down(PIN_SWITCH); 
+    load_uids();
     display_init();
     display_idle();
 
@@ -80,38 +106,75 @@ int main() {
         if (PICC_IsNewCardPresent(mfrc)) {
             if (PICC_ReadCardSerial(mfrc)) {
 
-                int access_granted = 0;
-                for (int i = 0; i < num_cards; i++) {
-                    if (memcmp(mfrc->uid.uidByte, authorized_uids[i], mfrc->uid.size) == 0) {
-                        access_granted = 1;
-                        break; 
+                
+                if (gpio_get(PIN_SWITCH) == 1) { 
+                    printf("ENROLLMENT MODE: Saving Card...\n");
+                    
+                    if (num_cards < MAX_CARDS) {
+                       
+                        memcpy(authorized_uids[num_cards], mfrc->uid.uidByte, 4);
+                        
+                       
+                        uint8_t buffer[6];
+                        uint16_t mem_addr = num_cards * 4; 
+                        buffer[0] = (mem_addr >> 8) & 0xFF;
+                        buffer[1] = mem_addr & 0xFF;
+                        memcpy(&buffer[2], mfrc->uid.uidByte, 4);
+                        
+                        i2c_write_blocking(I2C_PORT, EEPROM_ADDR, buffer, 6, false);
+                        sleep_ms(5); 
+                        
+                        num_cards++; 
+                        
+                        pwm_success();
+                        display_stored(); 
+                        printf("Card successfully saved to EEPROM!\n");
+                        sleep_ms(2000);
+                    } else {
+                        printf("EEPROM is full! Cannot add more cards.\n");
+                        pwm_fail();
+                        display_denied();
+                        sleep_ms(2000);
                     }
-                }
-
-                if (access_granted == 1) {
-                    failed_attempts = 0; 
-                    pwm_success();
-                    display_granted(); 
-                    printf("Access Granted\n");
-                    sleep_ms(2000); 
                 } 
                 else {
-                    failed_attempts++;
-                    if (failed_attempts >= MAX_ATTEMPTS) {
-                        pwm_tamper_alarm();
-                        display_tamper();
-                        printf("TAMPER WARNING! System Locked.\n");
-                        sleep_ms(5000); 
-                    } else {
-                        pwm_fail();
-                        display_denied(); 
-                        printf("Access Denied. Attempt %d of %d\n", failed_attempts, MAX_ATTEMPTS);
+                    printf("AUTHENTICATING...\n");
+                    load_uids();
+
+                    int access_granted = 0;
+                    for (int i = 0; i < num_cards; i++) {
+                        if (memcmp(mfrc->uid.uidByte, authorized_uids[i], mfrc->uid.size) == 0) {
+                            access_granted = 1;
+                            break; 
+                        }
+                    }
+
+                    if (access_granted == 1) {
+                        failed_attempts = 0; 
+                        pwm_success();
+                        display_granted(); 
+                        printf("Access Granted\n");
                         sleep_ms(2000); 
+                    } 
+                    else {
+                        failed_attempts++;
+                        if (failed_attempts >= MAX_ATTEMPTS) {
+                            pwm_tamper_alarm();
+                            display_tamper();
+                            printf("TAMPER WARNING! System Locked.\n");
+                            sleep_ms(5000); 
+                        } else {
+                            pwm_fail();
+                            display_denied(); 
+                            printf("Access Denied. Attempt %d of %d\n", failed_attempts, MAX_ATTEMPTS);
+                            sleep_ms(2000); 
+                        }
                     }
                 }
-                
+            
                 pwm_reset();
                 display_idle(); 
+                PICC_HaltA(mfrc); 
             }
         }
         sleep_ms(50);
