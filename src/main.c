@@ -10,6 +10,7 @@
 #include "display.h"
 
 #define MAX_CARDS 10
+#define MAX_ATTEMPTS 3
 
 uint8_t authorized_uids[MAX_CARDS][4] = {
     {0xDE, 0xAD, 0xBE, 0xEF},
@@ -43,6 +44,11 @@ void pwm_fail(){
     pwm_set_gpio_level(PIN_LED_RED, 255); 
     pwm_set_gpio_level(PIN_BUZZER, 255);
 }
+void pwm_tamper_alarm(){
+    pwm_set_gpio_level(PIN_LED_GREEN, 0);
+    pwm_set_gpio_level(PIN_LED_RED, 255); 
+    pwm_set_gpio_level(PIN_BUZZER, 255); 
+}
 void pwm_success(){
     pwm_set_gpio_level(PIN_LED_RED, 0);
     pwm_set_gpio_level(PIN_BUZZER, 0); 
@@ -58,53 +64,56 @@ void pwm_reset(){
 int main() {
     stdio_init_all();
     setup_pwm();
-    pwm_fail();
-    pwm_success();
     pwm_reset();
+
+    // Initialize the display and show the idle screen
     display_init();
     display_idle();
 
     MFRC522Ptr_t mfrc = MFRC522_Init();
     PCD_Init(mfrc, SPI_PORT);
     printf("RFID initialized\n");
-    uint8_t temp [4];
+    
+    int failed_attempts = 0; 
     
     while (true) {
         if (PICC_IsNewCardPresent(mfrc)) {
             if (PICC_ReadCardSerial(mfrc)) {
 
-                printf("UID: ");
-                for (int i = 0; i < mfrc->uid.size; i++) {
-                    printf("%02X ", mfrc->uid.uidByte[i]);
-                    temp [i] = mfrc->uid.uidByte[i];
-                   
-                }
-                printf("\n");
-                int suc = 0;
-                for (int i = 0;  i < num_cards; i++){
-                    pwm_reset();
-                    for (int j = 0; j < mfrc->uid.size; j++){
-                        if (temp [j] == authorized_uids[i][j]){
-                            suc++;
-                        }
-                        else{ 
-                            break;
-                        }
+                int access_granted = 0;
+                for (int i = 0; i < num_cards; i++) {
+                    if (memcmp(mfrc->uid.uidByte, authorized_uids[i], mfrc->uid.size) == 0) {
+                        access_granted = 1;
+                        break; 
                     }
                 }
-                if (suc==4){
-                    pwm_success();
-                    printf("Access Granted");
-                }
-                else{
-                    pwm_fail();
-                    printf("Access Denied");
-                }
-            }
-            
-        }
-        sleep_ms(200);
-        pwm_reset();
 
+                if (access_granted == 1) {
+                    failed_attempts = 0; 
+                    pwm_success();
+                    display_granted(); 
+                    printf("Access Granted\n");
+                    sleep_ms(2000); 
+                } 
+                else {
+                    failed_attempts++;
+                    if (failed_attempts >= MAX_ATTEMPTS) {
+                        pwm_tamper_alarm();
+                        display_tamper();
+                        printf("TAMPER WARNING! System Locked.\n");
+                        sleep_ms(5000); 
+                    } else {
+                        pwm_fail();
+                        display_denied(); 
+                        printf("Access Denied. Attempt %d of %d\n", failed_attempts, MAX_ATTEMPTS);
+                        sleep_ms(2000); 
+                    }
+                }
+                
+                pwm_reset();
+                display_idle(); 
+            }
+        }
+        sleep_ms(50);
     }
 }

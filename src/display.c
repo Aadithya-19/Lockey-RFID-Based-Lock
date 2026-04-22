@@ -114,7 +114,11 @@ void display_denied(void) {
     display_fill(COLOR_RED);
     draw_string(30, 150, "ACCESS DENIED", COLOR_WHITE, COLOR_RED, 3);
 }
-
+void display_tamper(void) {
+    display_fill(COLOR_RED);
+    draw_string(10, 140, "TAMPER DETECTED", COLOR_WHITE, COLOR_RED, 3);
+    draw_string(40, 180, "SYSTEM LOCKED", COLOR_WHITE, COLOR_RED, 2);
+}
 void display_idle(void) {
     display_fill(COLOR_BLACK);
     draw_string(50, 150, "SCAN CARD", COLOR_WHITE, COLOR_BLACK, 3);
