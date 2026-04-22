@@ -7,6 +7,7 @@
 #include "auth_store.h"
 #include "pico/stdlib.h"
 #include "mfrc522.h"
+#include "display.h"
 
 #define MAX_CARDS 10
 
@@ -17,6 +18,8 @@ uint8_t authorized_uids[MAX_CARDS][4] = {
 };
 
 int num_cards = 3;
+
+
 
 void setup_pwm() {
     gpio_set_function(PIN_LED_GREEN, GPIO_FUNC_PWM);
@@ -51,12 +54,15 @@ void pwm_reset(){
     pwm_set_gpio_level(PIN_BUZZER, 0); 
 }
 
+
 int main() {
     stdio_init_all();
     setup_pwm();
     pwm_fail();
     pwm_success();
     pwm_reset();
+    display_init();
+    display_idle();
 
     MFRC522Ptr_t mfrc = MFRC522_Init();
     PCD_Init(mfrc, SPI_PORT);

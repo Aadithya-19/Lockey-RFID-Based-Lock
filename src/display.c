@@ -71,46 +71,51 @@ void display_fill(uint16_t color) {
     gpio_put(PIN_LCD_CSn, 1);
 }
 
-static void draw_char(uint16_t x, uint16_t y, char c, uint16_t color, uint16_t bg) {
+static void draw_char(uint16_t x, uint16_t y, char c, uint16_t color, uint16_t bg, uint8_t size) {
     int idx = -1;
     for (int i = 0; i < sizeof(font) / sizeof(font[0]); i++) {
         if (font[i].letter == c) { idx = i; break; }
     }
     if (idx == -1) return;
 
-    set_window(x, y, x + 4, y + 6);
-    gpio_put(PIN_LCD_DC, 1);
-    gpio_put(PIN_LCD_CSn, 0);
     for (int row = 0; row < 7; row++) {
         for (int col = 0; col < 5; col++) {
             uint16_t pixel = (font[idx].code[row][col] == '#') ? color : bg;
-            uint8_t hi = pixel >> 8;
-            uint8_t lo = pixel & 0xFF;
-            spi_write_blocking(LCD_SPI_PORT, &hi, 1);
-            spi_write_blocking(LCD_SPI_PORT, &lo, 1);
+            
+            // Draw a block of pixels for each font pixel to scale it up
+            set_window(x + (col * size), y + (row * size), x + (col * size) + size - 1, y + (row * size) + size - 1);
+            gpio_put(PIN_LCD_DC, 1);
+            gpio_put(PIN_LCD_CSn, 0);
+            for (int p = 0; p < size * size; p++) {
+                uint8_t hi = pixel >> 8;
+                uint8_t lo = pixel & 0xFF;
+                spi_write_blocking(LCD_SPI_PORT, &hi, 1);
+                spi_write_blocking(LCD_SPI_PORT, &lo, 1);
+            }
+            gpio_put(PIN_LCD_CSn, 1);
         }
     }
-    gpio_put(PIN_LCD_CSn, 1);
 }
 
-static void draw_string(uint16_t x, uint16_t y, const char *str, uint16_t color, uint16_t bg) {
+// Scaled string drawing
+static void draw_string(uint16_t x, uint16_t y, const char *str, uint16_t color, uint16_t bg, uint8_t size) {
     for (int i = 0; str[i] != '\0'; i++) {
-        draw_char(x + i * 6, y, str[i], color, bg);
+        draw_char(x + i * (6 * size), y, str[i], color, bg, size);
     }
 }
 
-
+// Updated screens using scale factor of 3 and adjusted X/Y coordinates to center them
 void display_granted(void) {
     display_fill(COLOR_GREEN);
-    draw_string(78, 156, "ACCESS GRANTED", COLOR_WHITE, COLOR_GREEN);
+    draw_string(20, 150, "ACCESS GRANTED", COLOR_WHITE, COLOR_GREEN, 3);
 }
 
 void display_denied(void) {
     display_fill(COLOR_RED);
-    draw_string(81, 156, "ACCESS DENIED", COLOR_WHITE, COLOR_RED);
+    draw_string(30, 150, "ACCESS DENIED", COLOR_WHITE, COLOR_RED, 3);
 }
 
 void display_idle(void) {
     display_fill(COLOR_BLACK);
-    draw_string(93, 156, "SCAN CARD", COLOR_WHITE, COLOR_BLACK);
+    draw_string(50, 150, "SCAN CARD", COLOR_WHITE, COLOR_BLACK, 3);
 }
