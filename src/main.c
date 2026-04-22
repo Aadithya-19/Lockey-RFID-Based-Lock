@@ -1,4 +1,3 @@
-#include "pico/stdlib.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -6,7 +5,6 @@
 #include "pins.h"
 #include "hardware/pwm.h"
 #include "auth_store.h"
-#include "display.h"
 
 void setup_spi(){
     gpio_init(PIN_CS);
@@ -38,10 +36,9 @@ void setup_pwm() {
     pwm_set_enabled(red, true);
     pwm_set_enabled(buzzer, true);
 }
-
 void pwm_fail(){
     pwm_set_gpio_level(PIN_LED_GREEN, 0);
-    pwm_set_gpio_level(PIN_LED_RED, 255);
+    pwm_set_gpio_level(PIN_LED_RED, 255); 
     pwm_set_gpio_level(PIN_BUZZER, 255);
 }
 void pwm_success(){
@@ -83,19 +80,16 @@ void rfid_write(uint8_t reg, uint8_t value){
     gpio_put(PIN_CS, 1); //stops spi from talk to the rfid
 }
 
-void init_rfid() {
-    rfid_write(0x01, 0x0F);  // soft reset
+void init_rfid(){
+    rfid_write(0x01, 0x0F);
     sleep_ms(50);
-
-    rfid_write(0x2A, 0x00);  // TAuto=0 — disable auto timer
-    rfid_write(0x2B, 0xA9);
-    rfid_write(0x2C, 0xFF);  // max reload value
-    rfid_write(0x2D, 0xFF);
-    rfid_write(0x15, 0x40);  // 100% ASK
-    rfid_write(0x11, 0x3D);  // CRC preset
+    rfid_write(0x2A, 0x8D);
+    rfid_write(0x2B, 0x3E);
+    rfid_write(0x2D, 30);
+    rfid_write(0x2C, 0);
 
     uint8_t temp = read_rfid(0x14);
-    rfid_write(0x14, temp | 0x03);  // antenna on
+    rfid_write(0x14, temp | 0x03);
 }
 
 bool rfid_get_uid(uint8_t uid[4]) {
@@ -112,7 +106,7 @@ bool rfid_get_uid(uint8_t uid[4]) {
     rfid_write(0x09, 0x26); //FIFO Data Register, REQA queued
     rfid_write(0x01, 0x0C); //Command Register,  communicate
 
-    rfid_write(0x0D, 0x00);
+    
     //first one waits for REQA (0x26) to respond
     timeout = 1000;
     do {
@@ -126,9 +120,6 @@ bool rfid_get_uid(uint8_t uid[4]) {
     //communication, anticollision
     rfid_write(0x01, 0x00); //Command Register, to stop whatever it is doing
 
-    rfid_write(0x0A, 0x80); // flush FIFO
-    rfid_write(0x04, 0x7F); // clear IRQ flags
-
     //PICC_CMD_SEL_CL1 = 0x93,
     //Anti collision/Select, Cascade Level 1
     rfid_write(0x09, 0x93); //FIFO Data Register
@@ -136,11 +127,11 @@ bool rfid_get_uid(uint8_t uid[4]) {
     rfid_write(0x01, 0x0C); //Command Register, to communcate the data
 
     //second one waits for UID
-    timeout = 1000;
     do {
         irq = read_rfid(0x04);
         timeout--;
     } while (!(irq & 0x30) && timeout);
+
     if (timeout == 0) return false;
     if (read_rfid(0x06) & 0x1B) return false; //Error register check
 
@@ -156,32 +147,29 @@ bool rfid_get_uid(uint8_t uid[4]) {
 int main() {
     stdio_init_all();
     setup_spi();
-    gpio_init(PIN_RST);
-    gpio_set_dir(PIN_RST, GPIO_OUT);
-    gpio_put(PIN_RST, 0);
-    sleep_ms(50);
-    gpio_put(PIN_RST, 1);
-    sleep_ms(50);
     setup_pwm();
     init_rfid();
     auth_store_init();
     display_init();
     display_idle();
-
     uint8_t uid[4];
 
+    //uint8_t x = read_rfid(0x0);
     for (;;) {
-        if(rfid_get_uid(uid)) {
-            if(auth_store_check_uid(uid)) {
+        if(rfid_get_uid(uid))
+        {
+            if(auth_store_check_uid(uid)){
                 display_granted();
                 pwm_success();
-            } else {
+            }
+            else{
                 pwm_fail();
                 display_denied();
             }
-            sleep_ms(3000);
-            display_idle();
-            pwm_reset();
+            
         }
+        sleep_ms(200);
+        pwm_reset();
+
     }
 }
