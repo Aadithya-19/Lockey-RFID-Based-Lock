@@ -15,7 +15,7 @@
 #define PIN_BUZZER 26
 
 
-#define PIN_SWITCH 26
+#define PIN_SWITCH 21
 #define PIN_SERVO 24
 
 

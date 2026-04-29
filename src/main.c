@@ -29,28 +29,31 @@ void setup_pwm() {
     gpio_set_function(PIN_LED_GREEN, GPIO_FUNC_PWM);
     gpio_set_function(PIN_LED_RED, GPIO_FUNC_PWM);
     gpio_set_function(PIN_BUZZER, GPIO_FUNC_PWM);
-
     uint green = pwm_gpio_to_slice_num(PIN_LED_GREEN);
     uint red = pwm_gpio_to_slice_num(PIN_LED_RED);
     uint buzzer = pwm_gpio_to_slice_num(PIN_BUZZER);
-
     pwm_set_wrap(green, 255);
     pwm_set_wrap(red, 255);
-    pwm_set_wrap(buzzer, 255);
+    pwm_set_clkdiv(buzzer, 125.0f); 
+    pwm_set_wrap(buzzer, 500); 
 
     pwm_set_enabled(green, true);
     pwm_set_enabled(red, true);
     pwm_set_enabled(buzzer, true);
 }
+
 void pwm_fail(){
     pwm_set_gpio_level(PIN_LED_GREEN, 0);
     pwm_set_gpio_level(PIN_LED_RED, 255); 
-    pwm_set_gpio_level(PIN_BUZZER, 255);
+    
+    pwm_set_gpio_level(PIN_BUZZER, 250); 
 }
+
 void pwm_tamper_alarm(){
     pwm_set_gpio_level(PIN_LED_GREEN, 0);
     pwm_set_gpio_level(PIN_LED_RED, 255); 
-    pwm_set_gpio_level(PIN_BUZZER, 255); 
+    
+    pwm_set_gpio_level(PIN_BUZZER, 250); 
 }
 void pwm_success(){
     pwm_set_gpio_level(PIN_LED_RED, 0);
@@ -72,9 +75,7 @@ void load_uids()
         mem_addr_buf[0] = (mem_addr >> 8) & 0xFF; 
         mem_addr_buf[1] = mem_addr & 0xFF;        
 
-        // Send address to read from, keep bus active
         i2c_write_blocking(I2C_PORT, EEPROM_ADDR, mem_addr_buf, 2, true); 
-        // Read 4 bytes into our array
         i2c_read_blocking(I2C_PORT, EEPROM_ADDR, authorized_uids[i], 4, false);
     }
 }

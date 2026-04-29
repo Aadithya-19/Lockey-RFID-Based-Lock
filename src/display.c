@@ -53,13 +53,13 @@ void display_init(void) {
     send_data(0x55);
 
     send_command(0x36);
-    send_data(0x08);
+    send_data(0x28);
 
     send_command(0x29);
 }
 
 void display_fill(uint16_t color) {
-    set_window(0, 0, 239, 319);
+    set_window(0, 0, 319, 239);
     uint8_t hi = color >> 8;
     uint8_t lo = color & 0xFF;
     gpio_put(PIN_LCD_DC, 1);
