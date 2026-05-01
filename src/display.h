@@ -15,5 +15,8 @@ void display_fill(uint16_t color);
 void display_granted(void);
 void display_denied(void);
 void display_idle(void);
+void display_scanning(void);
+void display_stored(void);
+void display_tamper(void);
 
 #endif

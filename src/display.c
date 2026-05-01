@@ -127,5 +127,35 @@ void display_stored(void) {
 
 void display_idle(void) {
     display_fill(COLOR_BLACK);
-    draw_string(50, 150, "SCAN CARD", COLOR_WHITE, COLOR_BLACK, 3);
+    draw_string(60, 100, "WELCOME TO", COLOR_WHITE, COLOR_BLACK, 3);
+    draw_string(70, 140, "LOCKEY", COLOR_WHITE, COLOR_BLACK, 3);
+    draw_string(80, 180, "SCAN CARD", COLOR_WHITE, COLOR_BLACK, 2);
 }
+
+void display_scanning(void) {
+    display_fill(COLOR_BLACK);
+    draw_string(70, 100, "SCANNING", COLOR_WHITE, COLOR_BLACK, 3);
+
+    uint16_t bar_x = 0;
+    uint16_t bar_y = 160;
+    uint16_t bar_w = 319;  // full screen width
+    uint16_t bar_h = 40;
+
+    // fill bar progressively in white
+    for (int w = 0; w <= bar_w; w += 4) {
+        set_window(bar_x, bar_y, bar_x + w, bar_y + bar_h);
+        gpio_put(PIN_LCD_DC, 1);
+        gpio_put(PIN_LCD_CSn, 0);
+        int pixels = (w + 1) * (bar_h + 1);
+        for (int i = 0; i < pixels; i++) {
+            uint8_t hi = COLOR_WHITE >> 8;
+            uint8_t lo = COLOR_WHITE & 0xFF;
+            spi_write_blocking(LCD_SPI_PORT, &hi, 1);
+            spi_write_blocking(LCD_SPI_PORT, &lo, 1);
+        }
+        gpio_put(PIN_LCD_CSn, 1);
+        sleep_ms(10);
+    }
+}
+
+

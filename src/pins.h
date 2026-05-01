@@ -15,7 +15,8 @@
 #define PIN_BUZZER 26
 
 
-#define PIN_SWITCH 21
+#define PIN_SWITCH 23
+#define PIN_STORE 21
 #define PIN_SERVO 24
 
 
